@@ -1,0 +1,6 @@
+Value 1: Offset X, Offset Y, Who's active
+Value 2: Velocity active, Velocity multiplier
+
+"Who's active" can be 'player', 'opponent' or 'both'.
+"Velocity active" is just 'true' or 'false'.
+"Velocity multiplier" goes off of camera speed.

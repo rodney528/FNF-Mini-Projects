@@ -1,0 +1,5 @@
+Value 1: 'new' or 'edit', save name.
+Value 2: x, y
+
+In scripts you can access the saves
+from the variable "savedCamLockPoses".

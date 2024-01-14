@@ -1,0 +1,4 @@
+Value 1: Opponent to Point at.
+Value 2: Player to Point at.
+
+Same layout as explained in "Camera Set Target".

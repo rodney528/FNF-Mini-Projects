@@ -1,0 +1,10 @@
+Value 1: Opponent X, Y camera position
+Value 2: Player X, Y camera position
+
+Leave blank to unlock the position and
+return to the default char cam position.
+
+Put 'previous' for the last placed position cords
+and 'update' to update pos NOW and not just LATER.
+'from char' to set from char cam position
+ex: from char, (this part is basically just "Camera Set Target")

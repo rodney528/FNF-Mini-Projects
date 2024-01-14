@@ -1,0 +1,19 @@
+{
+	"note": "Extra lanes aren't added to \"strumLineNotes\" so you'll need to for loop them separately",
+	"info": [
+		{
+			"comment": "to make a gf strum lane",
+			"tag": "gf",
+			"attachmentVar": "gfNote",
+			"noteTypes": [],
+			"inFront": false
+		},
+		{
+			"comment": "example of what not todo",
+			"tag": "playerStrums",
+			"attachmentVar": "",
+			"noteTypes": [""],
+			"inFront": true
+		}
+	]
+}
