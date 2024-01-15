@@ -140,18 +140,20 @@ function onCountdownTick() iHateEverything();
 function callNoteHit(daNote:Note, strumLane) {
 	final ogMustPress:Bool = daNote.mustPress;
 	daNote.mustPress = false;
-	var callScript = function(daNote:Note, ?isPost:Bool = false) {
-		var funcNames:String = 'otherStrumHit' + (isPost ? 'Post' : '');
+	var callScript = function(daNote:Note, ?isPre:Bool = false) {
+		var funcNames:String = 'otherStrumHit' + (isPre ? 'Pre' : '');
 		daNote.mustPress = ogMustPress;
 		var result:Dynamic = game.callOnLuas(funcNames, [notes.members.indexOf(daNote), daNote.noteData, daNote.noteType, daNote.isSustainNote, strumLane.tag]);
 		if (result != FunkinLua.Function_Stop && result != FunkinLua.Function_StopHScript && result != FunkinLua.Function_StopAll) game.callOnHScript(funcNames, [daNote, strumLane]);
 		daNote.mustPress = false;
 	}
 	
-	callScript(daNote);
+	callScript(daNote, true);
+
 	if (daNote.mustPress) daNote.wasGoodHit = true;
+
 	if (Paths.formatToSongPath(PlayState.SONG.song) != 'tutorial' && !daNote.musPress) game.camZooming = true;
-	
+
 	if (!daNote.noAnimation) {
 		var char:Character = null;
 		var animCheck:String = 'hey';
@@ -175,8 +177,9 @@ function callNoteHit(daNote:Note, strumLane) {
 	if ((daNote.mustPress && cpuControlled) || !daNote.mustPress) strumLane.lane.members[daNote.noteData].resetAnim = Conductor.stepCrochet * 1.25 / 1000 / playbackRate;
 	// daNote.mustPress = false;
 	if (!daNote.mustPress) daNote.hitByOpponent = true;
+	
 	vocals.volume = 1;
-	callScript(daNote, true);
+	callScript(daNote);
 	if (!daNote.isSustainNote) game.invalidateNote(daNote);
 }
 
