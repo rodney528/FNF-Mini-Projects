@@ -1,0 +1,2 @@
+Value 1: Character to change
+Value 2: New character's name

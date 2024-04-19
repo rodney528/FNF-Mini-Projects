@@ -347,9 +347,6 @@ function clamp(x, min, max) return math.max(min, math.min(x, max)) end
 function turnIntoPercent(mainValue, maxValue, outOf)
 	return (mainValue / maxValue) * (outOf == nil and 100 or outOf)
 end
-function unvertFromPercent(mainPercent, maxValue, outOf)
-	return mainPercent * maxValue / (outOf == nil and 100 or outOf)
-end
 
 function onCreatePost()
 	stupidVar('curChar', {
@@ -424,25 +421,25 @@ function moveCamNoteDir(membersIndex)
 		moveCameraSection()
 		-- Add your own thing if you want if you have custom options for instance.
 		if getProperty('whosActive.' .. (getPropertyFromGroup('notes', membersIndex, 'mustPress') and 'play' or 'oppo')) --[[ and getModSetting('camMoveInNoteDir') ]] then
-			local strumTime = getPropertyFromGroup('notes', membersIndex, 'strumTime') / 1000 -- Funny strumTime :)
 			local sustainLength = getPropertyFromGroup('notes', membersIndex, 'sustainLength') / 1000 -- When the camera should return to the default postiton.
 			local isSustainNote = getPropertyFromGroup('notes', membersIndex, 'isSustainNote') -- For sustain bullshit.
 			local percentMath = 1
-			if internalSettings.sustainDisplacement and not isSustainNote then
-				runHaxeCode([[
-					var daNote:Note = game.notes.members[]] .. membersIndex .. [[];
-					for (daTail in daNote.tail) {
-						daTail.extraData.set('parentSustainLength', daNote.sustainLength);
-						daTail.extraData.set('parentStrumTime', daNote.strumTime);
-					}
-				]])
-			end
-			if internalSettings.sustainDisplacement and isSustainNote then
-				local function getNoteExtraData(value)
-					return checkVarData(runHaxeCode("return game.notes.members[" .. membersIndex .. "].extraData.get('" .. value .. "');"), 0, 'number')
+			if internalSettings.sustainDisplacement then
+				if not isSustainNote then
+					runHaxeCode([[
+						var daNote:Note = game.notes.members[]] .. membersIndex .. [[];
+						for (daTail in daNote.tail) {
+							daTail.extraData.set('parentSustainLength', daNote.sustainLength);
+							daTail.extraData.set('parentStrumTime', daNote.strumTime);
+						}
+					]])
+				else
+					local function getNoteExtraData(value)
+						return checkVarData(runHaxeCode("return game.notes.members[" .. membersIndex .. "].extraData.get('" .. value .. "');"), 0, 'number')
+					end
+					local funny = getPropertyFromGroup('notes', membersIndex, 'strumTime') - getNoteExtraData('parentStrumTime')
+					percentMath = clamp(turnIntoPercent(getNoteExtraData('parentSustainLength') - funny, getNoteExtraData('parentSustainLength'), 1), 0, 1)
 				end
-				local funny = getPropertyFromGroup('notes', membersIndex, 'strumTime') - getNoteExtraData('parentStrumTime')
-				percentMath = clamp(turnIntoPercent((getNoteExtraData('parentSustainLength') - funny) / 1000, getNoteExtraData('parentSustainLength') / 1000, 1), 0, 1)
 			end
 			local calculatedDisplacement = {
 				x = camDisplaceOffset.x * percentMath,
@@ -610,7 +607,7 @@ end
 function onCountdownTick(counter) camIdleBop(counter) end
 function onBeatHit() camIdleBop(curBeat) end
 
-function onEvent(name, value1, value2)
+function onEvent(name, value1, value2, eventTime)
 	if name == 'Camera Set Target' then
 		local splitContents = {v1 = {}, v2 = {}}
 		splitContents.v1 = textSplit(value1, ',')
@@ -745,6 +742,10 @@ function onEvent(name, value1, value2)
 		end
 		dumbSet('savedCamLockPoses', savedCamLockPositions)
 		if getPropertyFromClass((below07 and '' or 'states.') .. 'PlayState', 'chartingMode') then debugPrint(splitContents.v1[2] .. ': ' .. savedCamLockPoses[splitContents.v1[2]]) end
+	end
+
+	if name == 'Snap Camera Position' then
+		setCamPos(getCamPos().x, getCamPos().y, true)
 	end
 end
 

@@ -1,0 +1,4 @@
+Basically the "Play Animation" event.
+
+Value 1: Animation to play.
+Value 2: Character tag name.
