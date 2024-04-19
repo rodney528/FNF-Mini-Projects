@@ -1,14 +1,12 @@
-{
+{ // note that comments aren't permitted in jsons so please remove these comments if you reuse this file
 	"info": [
-		{
-			"comment": "to make a gf strum lane",
+		{ // to make a gf strum lane
 			"tag": "gf",
 			"attachmentVar": "gfNote",
 			"noteTypes": [],
 			"inFront": false
 		},
-		{
-			"comment": "example of what not todo",
+		{ // example of what not todo
 			"tag": "playerStrums",
 			"attachmentVar": "",
 			"noteTypes": [""],
