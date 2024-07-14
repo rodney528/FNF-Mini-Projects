@@ -5,8 +5,12 @@ local internalSettings = { -- This is for smaller stuff in the script that don't
 		'Hey!',
 		'No Animation'
 	},
-	sustainDisplacement = true -- With this on the camera will slowly lose its displacement instead of just moving back at the end of a note.
+	sustainDisplacement = true, -- With this on the camera will slowly lose its displacement instead of just moving back at the end of a note.
+	preventJitter = true -- Makes movement less jittery when not using `sustainDisplacement`.
 }
+
+-- Cool 0.6.3 backwards compatibility bullshit! `nil` for auto set. If it doesn't set automatically feel free to manually set it.
+local below07 = nil
 
 local function setupVars()
 	-- These are options you can customize.
@@ -30,12 +34,13 @@ local function setupVars()
 	})
 	stupidVar('allowBothPresses', false) -- Allows opponent and player note hit to cause camera displacement no matter the section when enabled. Recommended for `ifCamLocked` stuff.
 	stupidVar('forceSectionDetection', nil) -- If true only player hits trigger displacement, false for opponent and `nil` to disable (doesn't ignore `allowBothPresses`).
+
+	if below07 then -- WHY TF DOES 0.7 NOT WORK WHEN THIS IS CREATED?!?!?!?!??!
+		stupidVar('targetOffset', {x = 0, y = 0}) -- For 0.6.3 to work.
+	end
 end
 
 -- !! DON'T TOUCH ANYTHING BELOW THIS POINT !! --
-
--- cool 0.6.3 backwards compatibility bullshit
-local below07 = false
 
 ---setVar basically
 ---@param varName string
@@ -207,16 +212,28 @@ end
 ---@param x number
 ---@param y number
 function setCamOffset(x, y)
-	setProperty('camGame.targetOffset.x', checkVarData(x, getProperty('camGame.targetOffset.x'), 'number'))
-	setProperty('camGame.targetOffset.y', checkVarData(y, getProperty('camGame.targetOffset.y'), 'number'))
+	if below07 then
+		setProperty('targetOffset.x', checkVarData(x, getProperty('targetOffset.x'), 'number'))
+		setProperty('targetOffset.y', checkVarData(y, getProperty('targetOffset.y'), 'number'))
+	else
+		setProperty('camGame.targetOffset.x', checkVarData(x, getProperty('camGame.targetOffset.x'), 'number'))
+		setProperty('camGame.targetOffset.y', checkVarData(y, getProperty('camGame.targetOffset.y'), 'number'))
+	end
 end
 
 ---@return number
 function getCamOffset()
-	return {
-		x = getProperty('camGame.targetOffset.x'),
-		y = getProperty('camGame.targetOffset.y')
-	}
+	if below07 then
+		return {
+			x = getProperty('targetOffset.x'),
+			y = getProperty('targetOffset.y')
+		}
+	else
+		return {
+			x = getProperty('camGame.targetOffset.x'),
+			y = getProperty('camGame.targetOffset.y')
+		}
+	end
 end
 
 local triggerVelocity = false
@@ -366,18 +383,19 @@ function textSplit(str, delimiter)
 end
 
 function onCreate()
-	setupVars()
-	if version == '0.6.3' then below07 = true
-	elseif stringStartsWith(version, '0.3') or stringStartsWith(version, '0.4') or stringStartsWith(version, '0.5') then
-		below07 = true -- still not 0.7 so yeah ¯\_(ツ)_/¯
+	if below07 == nil then
+		below07 = version <= '0.6.3'
+	end
+	if version <= '0.6.2' then -- still not 0.7 so yeah ¯\_(ツ)_/¯
 		debugPrint([[
 			Hey, your using version ]] .. version .. [[!
 			This script only supports versions 0.6.3 and latest (being 0.7.3 as of rn).
 			Please use those versions of psych for the script to work properly!
-			If you think the script will be fine just remove the return line and stuff.
+			If you think the script will be fine just remove the return line and close function.
 		]])
 		return close(true)
 	end
+	setupVars()
 
 	if not below07 then
 		runHaxeCode([[
@@ -462,7 +480,7 @@ function moveCamNoteDir(membersIndex, keyAmount)
 					runTimer('cool cam return', (sustainLength > 0 and sustainLength or ((stepCrochet / 1000) * 1.6)) / playbackRate)
 				end
 			else
-				runTimer('cool cam return', ((stepCrochet / 1000) * (isSustainNote and 0.6 or 1.6)) / playbackRate)
+				runTimer('cool cam return', ((stepCrochet / 1000) * (isSustainNote and (internalSettings.preventJitter and 1 or 0.6) or 1.6)) / playbackRate)
 			end
 		end
 		-- flushSaveData("NOW'S YOUR CHANCE TO TAKE A [[BIG SHIT]]")
@@ -518,17 +536,29 @@ function onUpdatePost(elapsed)
 	else
 		putSection = getProperty('forceSectionDetection')
 	end
-	if getProperty('camVelocity.active') and startedCountdown and not inGameOver then
-		local otherShit = not getProperty('inCutscene') and (below07 and true or (not getProperty('paused') and not getProperty('freezeCamera')))
+	if startedCountdown and not inGameOver then
 		local speedThing = triggerVelocity and (getProperty('camVelocity.mult') / getProperty('camGame.zoom')) or 1
-		setProperty('camGame.followLerp', otherShit and (2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate) or 0)
+		if below07 then
+			if not getProperty('inCutscene') then
+				local function bound(value, min, max) return math.max(min, math.min(max, value)) end
+				local lerpVal = bound(elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate, 0, 1)
+				local function lerp(a, b, ratio) return a + ratio * (b - a) end
+				setProperty('camFollowPos.x', lerp(getProperty('camFollowPos.x'), getProperty('camFollow.x') + getProperty('targetOffset.x'), lerpVal))
+				setProperty('camFollowPos.y', lerp(getProperty('camFollowPos.y'), getProperty('camFollow.y') + getProperty('targetOffset.y'), lerpVal))
+			end
+		else
+			if getProperty('camVelocity.active') then
+				local otherShit = not getProperty('inCutscene') and (below07 and true or (not getProperty('paused') and not getProperty('freezeCamera')))
+				setProperty('camGame.followLerp', otherShit and (2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate) or 0)
+			end
+		end
 		-- debugPrint(getProperty('camGame.followLerp'))
 	end
 end
 
 local function camIdleBop(onPercent)
 	if (getProperty('allowCamIdleBop') and startedCountdown) then
-		if getProperty(getProperty('curChar')[1] .. '.x') == nil then return end
+		if not charExists(getProperty(getProperty('curChar')[1])) then return end
 		local cur = {beatNums = getProperty(getProperty('curChar')[1] .. '.danceEveryNumBeats'), anim = getProperty(getProperty('curChar')[1] .. '.animation.name')}
 		local function addIdleSuffix(anim) return anim .. getProperty(getProperty('curChar')[1] .. '.idleSuffix') end
 		if not getProperty('isCameraOnForcedPos') and not getProperty('inCutscene') then
