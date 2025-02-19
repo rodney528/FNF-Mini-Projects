@@ -1,8 +1,8 @@
-import flixel.group.FlxTypedGroup;
-import psychlua.FunkinLua;
-import objects.StrumNote;
 import haxe.ds.StringMap;
 import backend.Mods;
+import flixel.group.FlxTypedGroup;
+import objects.StrumNote;
+import psychlua.FunkinLua;
 import tjson.TJSON as Json;
 
 /*typedef LaneInfo = {
@@ -65,10 +65,10 @@ var blankLaneInfo = function(?mustPress = null) return mustPress == null ? {
  * @param inFront adds it in front of the base strum lanes
  */
 function generateStrumLane(tag:String, attachmentVar:String, ?noteTypes:Array<String> = [], ?inFront:Bool = false) {
-	if (StringTools.endsWith(tag.toLowerCase(), 'strums')) return debugPrint('generateStrumLane: Strum lane tag can\'t end with "Strums" because the script does that for you.', 0xff0000); 
+	if (StringTools.endsWith(tag.toLowerCase(), 'strums')) return debugPrint('generateStrumLane: Strum lane tag can\'t end with "Strums" because the script does that for you.', 0xff0000);
 	else if (strumLanes.exists(tag)) return debugPrint('generateStrumLane: Strum lane tag "' + tag + '" already exists.', 0xff0000);
 	else if (tag == 'opponent' || tag == 'player') return debugPrint('generateStrumLane: Strum lane tag can\'t be "' + tag + '", as it would be named as a base game strum lane.', 0xff0000);
-	if (attachmentVar == '') return debugPrint('generateStrumLane: Can\'t be blank bruv, try "gfNote" instead.', 0xff0000);
+	if (attachmentVar == '') return debugPrint('generateStrumLane: Can\'t be blank, try "gfNote" instead.', 0xff0000);
 	var strumGroup:FlxTypedGroup<StrumNote> = new FlxTypedGroup();
 	for (i in 0...4) { // fuck extra keys... not really
 		var strumNote:StrumNote = new StrumNote(0, ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50, i, 0);
@@ -147,7 +147,7 @@ function callNoteHit(daNote:Note, strumLane) {
 		if (result != FunkinLua.Function_Stop && result != FunkinLua.Function_StopHScript && result != FunkinLua.Function_StopAll) game.callOnHScript(funcNames, [daNote, strumLane]);
 		daNote.mustPress = false;
 	}
-	
+
 	callScript(daNote, true);
 
 	if (daNote.mustPress) daNote.wasGoodHit = true;
@@ -171,13 +171,13 @@ function callNoteHit(daNote:Note, strumLane) {
 			}
 		}
 	}
-	
+
 	// daNote.mustPress = ogMustPress;
 	strumLane.lane.members[daNote.noteData].playAnim('confirm', true);
 	if ((daNote.mustPress && cpuControlled) || !daNote.mustPress) strumLane.lane.members[daNote.noteData].resetAnim = Conductor.stepCrochet * 1.25 / 1000 / playbackRate;
 	// daNote.mustPress = false;
 	if (!daNote.mustPress) daNote.hitByOpponent = true;
-	
+
 	vocals.volume = 1;
 	callScript(daNote);
 	if (!daNote.isSustainNote) game.invalidateNote(daNote);

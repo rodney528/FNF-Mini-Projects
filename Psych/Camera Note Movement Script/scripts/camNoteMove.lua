@@ -1,4 +1,4 @@
--- Script by @RodneyAnImaginativePerson
+-- Script by @rodney528
 
 local internalSettings = { -- This is for smaller stuff in the script that don't make a lot of sense to be able to change mid-song.
 	blacklistedNoteTypes = { -- These noteTypes will not trigger displacement if listed.
@@ -6,10 +6,11 @@ local internalSettings = { -- This is for smaller stuff in the script that don't
 		'No Animation'
 	},
 	sustainDisplacement = true, -- With this on the camera will slowly lose its displacement instead of just moving back at the end of a note.
-	preventJitter = true -- Makes movement less jittery when not using `sustainDisplacement`.
+	cleanerMovement = true -- Makes the movement look cleaner and less jittery.
 }
 
 -- Cool 0.6.3 backwards compatibility bullshit! `nil` for auto set. If it doesn't set automatically feel free to manually set it.
+local above07 = nil
 local below07 = nil
 
 local function setupVars()
@@ -34,8 +35,10 @@ local function setupVars()
 	})
 	stupidVar('allowBothPresses', false) -- Allows opponent and player note hit to cause camera displacement no matter the section when enabled. Recommended for `ifCamLocked` stuff.
 	stupidVar('forceSectionDetection', nil) -- If true only player hits trigger displacement, false for opponent and `nil` to disable (doesn't ignore `allowBothPresses`).
+	stupidVar('forceCameraTarget', {nil, nil, nil}) -- Has the same setup as the camPointChars stuff. Setting one of the values to nil makes it check camPointChars instead.
+	stupidVar('forceCameraSection', nil) -- It's basically forceSectionDetection but for who the camera goes to instead.
 
-	if below07 then -- WHY TF DOES 0.7 NOT WORK WHEN THIS IS CREATED?!?!?!?!??!
+	if below07 or above07 then
 		stupidVar('targetOffset', {x = 0, y = 0}) -- For 0.6.3 to work.
 	end
 end
@@ -176,8 +179,8 @@ function setCamPos(x, y, isPos)
 		setProperty(camFolPosTag().x, checkVarData(x - (below07 and 0 or (screenWidth / 2)), getProperty(camFolPosTag().x), 'number'))
 		setProperty(camFolPosTag().y, checkVarData(y - (below07 and 0 or (screenHeight / 2)), getProperty(camFolPosTag().y), 'number'))
 	else
-		setProperty('camFollow.x', checkVarData(x, getProperty('camFollow.x'), 'number'))
-		setProperty('camFollow.y', checkVarData(y, getProperty('camFollow.y'), 'number'))
+		setProperty('camFollow.x', checkVarData(x, getCamPos().x, 'number'))
+		setProperty('camFollow.y', checkVarData(y, getCamPos().y, 'number'))
 	end
 end
 
@@ -213,11 +216,11 @@ end
 ---@param y number
 function setCamOffset(x, y)
 	if below07 then
-		setProperty('targetOffset.x', checkVarData(x, getProperty('targetOffset.x'), 'number'))
-		setProperty('targetOffset.y', checkVarData(y, getProperty('targetOffset.y'), 'number'))
+		setProperty('targetOffset.x', checkVarData(x, getCamOffset().x, 'number'))
+		setProperty('targetOffset.y', checkVarData(y, getCamOffset().y, 'number'))
 	else
-		setProperty('camGame.targetOffset.x', checkVarData(x, getProperty('camGame.targetOffset.x'), 'number'))
-		setProperty('camGame.targetOffset.y', checkVarData(y, getProperty('camGame.targetOffset.y'), 'number'))
+		setProperty('camGame.targetOffset.x', checkVarData(x, getCamOffset().x, 'number'))
+		setProperty('camGame.targetOffset.y', checkVarData(y, getCamOffset().y, 'number'))
 	end
 end
 
@@ -237,18 +240,21 @@ function getCamOffset()
 end
 
 local triggerVelocity = false
-local function cancelTimers()
+local function cancelTriggers()
 	cancelTimer('cool cam return')
 	cancelTimer('cam after bop')
+	cancelTween('cleanSustainDisplacementX')
+	cancelTween('cleanSustainDisplacementY')
 	triggerVelocity = false
 	updateCameraInfo(true)
 end
 
 local lastFocus = ''
-local putSection = mustHitSection
+local cameraDetection = mustHitSection
+local sectionDetection = cameraDetection
 local function callCamPoint2Func(character, stopCall)
 	if character ~= lastFocus and not checkVarData(stopCall, false, 'boolean') then
-		local setSection = gfSection and nil or putSection
+		local setSection = gfSection and nil or sectionDetection
 		if below07 then
 			callOnLuas('camPointingTo', {character, setSection})
 		else
@@ -257,7 +263,21 @@ local function callCamPoint2Func(character, stopCall)
 		-- lags a fuck ton
 		-- if not below07 then runHaxeFunction('callCamPoint2Func', {character, setSection}) end
 		lastFocus = character
-		cancelTimers()
+		cancelTriggers()
+	end
+end
+
+local function updateDetectionVars()
+	-- !!! FUCKING DIE YOU PIECE OF SHIT !!! --
+	if tostring((getProperty('forceCameraSection'))) == 'nil' or getProperty('forceCameraSection') == 'forceCameraSection' then
+		cameraDetection = mustHitSection
+	else
+		cameraDetection = getProperty('forceCameraSection')
+	end
+	if tostring((getProperty('forceSectionDetection'))) == 'nil' or getProperty('forceSectionDetection') == 'forceSectionDetection' then
+		sectionDetection = cameraDetection
+	else
+		sectionDetection = getProperty('forceSectionDetection')
 	end
 end
 
@@ -265,15 +285,16 @@ end
 ---@param charName string
 ---@return boolean
 local function charExists(charName)
-	return runHaxeCode([[
-		var charName:String = ']] .. charName .. [[';
-		return switch (charName) {
-			case 'gf': game.gf != null;
-			case 'dad': game.dad != null;
-			case 'boyfriend': game.boyfriend != null;
-			default: game.getLuaObject(charName, false) != null;
-		}
-	]])
+	return type(getProperty(charName .. '.x')) == 'number'
+	-- return runHaxeCode([[
+	-- 	var charName:String = ']] .. charName .. [[';
+	-- 	return switch (charName) {
+	-- 		case 'gf': game.gf != null;
+	-- 		case 'dad': game.dad != null;
+	-- 		case 'boyfriend': game.boyfriend != null;
+	-- 		default: game.getLuaObject(charName, false) != null;
+	-- 	}
+	-- ]])
 end
 
 ---Double checks for it hide gf is enabled in the stage json.
@@ -306,19 +327,19 @@ end
 ---@param stopCall? boolean
 ---@param updatePos? boolean
 function updateCameraInfo(stopCall, updatePos)
-	if not getProperty('isCameraOnForcedPos') then
+	-- if not getProperty('isCameraOnForcedPos') then
 		setCamOffset(0, 0)
 		stopCall = checkVarData(stopCall, false, 'boolean')
 		updatePos = checkVarData(updatePos, false, 'boolean')
-		if getProperty('ifCamLocked.' .. (putSection and 'play' or 'oppo') .. '.active') and updatePos then
+		if getProperty('ifCamLocked.' .. (sectionDetection and 'play' or 'oppo') .. '.active') and updatePos then
 			setLockedCamPos(mustHitSection)
-			callCamPoint2Func(putSection and 'playerLock' or 'opponentLock', stopCall)
+			callCamPoint2Func(sectionDetection and 'playerLock' or 'opponentLock', stopCall)
 		else
 			if updatePos then
 				setToCharCamPosition(getProperty('curChar')[1], {getProperty('curChar')[2], getProperty('curChar')[3]}, true, stopCall)
 			end
 		end
-	end
+	-- end
 end
 
 local focusThingy = gfSection and 'gf' or (mustHitSection and 'boyfriend' or 'dad')
@@ -362,8 +383,8 @@ function setToCharCamPosition(character, offset, setPos, stopCall)
 			end
 		end
 		local camTag = 'camFollow' .. (setPos and '' or 'Fake')
-		setProperty(camTag .. '.x', camPos.x)
-		setProperty(camTag .. '.y', camPos.y)
+		setProperty(camTag .. '.x', camPos.x * getProperty(character .. '.scrollFactor.x'))
+		setProperty(camTag .. '.y', camPos.y * getProperty(character .. '.scrollFactor.y'))
 		if setPos then callCamPoint2Func(character, checkVarData(stopCall, false, 'boolean')) end
 	end
 end
@@ -383,6 +404,9 @@ function textSplit(str, delimiter)
 end
 
 function onCreate()
+	if above07 == nil then
+		above07 = version >= '0.7.3'
+	end
 	if below07 == nil then
 		below07 = version <= '0.6.3'
 	end
@@ -418,11 +442,17 @@ function onCreate()
 	dumbSet('savedCamLockPoses', {})
 end
 
+local function forceTargetCheck(index, state)
+	local useForce = type(getProperty('forceCameraTarget')[index]) == 'string'
+	return useForce and getProperty('forceCameraTarget')[index] or getProperty('camPointChars.' .. (state and 'play' or 'oppo'))[index]
+end
+
 function onCreatePost()
+	updateDetectionVars()
 	stupidVar('curChar', {
-		gfSection and 'gf' or (mustHitSection and getProperty('camPointChars.play')[1] or getProperty('camPointChars.oppo')[1]),
-		gfSection and 'gf' or (mustHitSection and getProperty('camPointChars.play')[2] or getProperty('camPointChars.oppo')[2]),
-		gfSection and 'girlfriend' or (mustHitSection and getProperty('camPointChars.play')[3] or getProperty('camPointChars.oppo')[3])
+		gfSection and 'gf' or (cameraDetection and forceTargetCheck(1, true) or forceTargetCheck(1, false)),
+		gfSection and 'gf' or (cameraDetection and forceTargetCheck(2, true) or forceTargetCheck(2, false)),
+		gfSection and 'girlfriend' or (cameraDetection and forceTargetCheck(3, true) or forceTargetCheck(3, false))
 	})
 	updateCameraInfo(false, true)
 end
@@ -447,12 +477,12 @@ function moveCamNoteDir(membersIndex, keyAmount)
 		return
 	end
 
-	if not getProperty('isCameraOnForcedPos') then
-		cancelTimers()
+	-- if not getProperty('isCameraOnForcedPos') then
+		cancelTriggers()
 		updateCameraInfo()
 		-- Add your own thing if you want if you have custom options for instance.
 		if getProperty('whosActive.' .. (getPropertyFromGroup('notes', membersIndex, 'mustPress') and 'play' or 'oppo')) --[[ and getModSetting('camMoveInNoteDir') ]] then
-			local sustainLength = getPropertyFromGroup('notes', membersIndex, 'sustainLength') / 1000 -- When the camera should return to the default postiton.
+			local sustainLength = getPropertyFromGroup('notes', membersIndex, 'sustainLength') / 1000 -- When the camera should return to the default position.
 			local isSustainNote = getPropertyFromGroup('notes', membersIndex, 'isSustainNote') -- For sustain bullshit.
 			local percentMath = 1
 			if internalSettings.sustainDisplacement and isSustainNote then
@@ -460,6 +490,14 @@ function moveCamNoteDir(membersIndex, keyAmount)
 				percentMath = turnIntoPercent(getPropertyFromGroup('notes', membersIndex, 'parent.sustainLength') - maths, getPropertyFromGroup('notes', membersIndex, 'parent.sustainLength'), 1)
 			end
 			percentMath = clamp(percentMath, 0, 1)
+			--[[ if internalSettings.sustainDisplacement and internalSettings.cleanerMovement then
+				if not isSustainNote then
+					doTweenX('cleanSustainDisplacementX', below07 and 'targetOffset' or 'camGame.targetOffset', 0, sustainLength, 'linear')
+					doTweenY('cleanSustainDisplacementY', below07 and 'targetOffset' or 'camGame.targetOffset', 0, sustainLength, 'linear')
+				else
+					return
+				end
+			end ]]
 			local calculatedDisplacement = {
 				x = getProperty('displacementOffset.x') * percentMath,
 				y = getProperty('displacementOffset.y') * percentMath
@@ -480,15 +518,15 @@ function moveCamNoteDir(membersIndex, keyAmount)
 					runTimer('cool cam return', (sustainLength > 0 and sustainLength or ((stepCrochet / 1000) * 1.6)) / playbackRate)
 				end
 			else
-				runTimer('cool cam return', ((stepCrochet / 1000) * (isSustainNote and (internalSettings.preventJitter and 1 or 0.6) or 1.6)) / playbackRate)
+				runTimer('cool cam return', ((stepCrochet / 1000) * (isSustainNote and (internalSettings.cleanerMovement and 1 or 0.6) or 1.6)) / playbackRate)
 			end
 		end
 		-- flushSaveData("NOW'S YOUR CHANCE TO TAKE A [[BIG SHIT]]")
-	end
+	-- end
 end
 
 local function sharedNoteHit(membersIndex, keyAmount)
-	if (not getProperty('allowBothPresses') and putSection == getPropertyFromGroup('notes', membersIndex, 'mustPress')) or getProperty('allowBothPresses') then
+	if (not getProperty('allowBothPresses') and sectionDetection == getPropertyFromGroup('notes', membersIndex, 'mustPress')) or getProperty('allowBothPresses') then
 		moveCamNoteDir(membersIndex, keyAmount)
 	end
 end
@@ -498,10 +536,10 @@ function otherStrumHit(membersIndex, noteData, noteType, isSustainNote, strumLan
 
 local function sharedNoteMiss(membersIndex, noteData, noteType, isSustainNote)
 	local mustPress = getPropertyFromGroup('notes', membersIndex, 'mustPress')
-	if getProperty('canSnapOnMiss') and flashingLights and putSection == mustPress and getProperty('whosActive.' .. (mustPress and 'play' or 'oppo')) and not getProperty('isCameraOnForcedPos') then
-		cancelTimers()
+	if getProperty('canSnapOnMiss') and flashingLights and sectionDetection == mustPress and getProperty('whosActive.' .. (mustPress and 'play' or 'oppo')) --[[ and not getProperty('isCameraOnForcedPos') ]] then
+		cancelTriggers()
 		updateCameraInfo(true)
-		setCamPos(getCamPos().x, getCamPos().y, true)
+		triggerEvent('Snap Camera Position')
 		if getProperty('camZooming') then setProperty('camGame.zoom', getProperty('defaultCamZoom')) end
 	end
 	triggerVelocity = false
@@ -515,10 +553,11 @@ function onCountdownStarted()
 end
 
 function onSectionHit()
+	updateDetectionVars()
 	setProperty('curChar', {
-		gfSection and 'gf' or (mustHitSection and getProperty('camPointChars.play')[1] or getProperty('camPointChars.oppo')[1]),
-		gfSection and 'gf' or (mustHitSection and getProperty('camPointChars.play')[2] or getProperty('camPointChars.oppo')[2]),
-		gfSection and 'girlfriend' or (mustHitSection and getProperty('camPointChars.play')[3] or getProperty('camPointChars.oppo')[3])
+		gfSection and 'gf' or (cameraDetection and forceTargetCheck(1, true) or forceTargetCheck(1, false)),
+		gfSection and 'gf' or (cameraDetection and forceTargetCheck(2, true) or forceTargetCheck(2, false)),
+		gfSection and 'girlfriend' or (cameraDetection and forceTargetCheck(3, true) or forceTargetCheck(3, false))
 	})
 	updateCameraInfo(false, true)
 end
@@ -531,25 +570,22 @@ function onUpdate(elapsed)
 end
 
 function onUpdatePost(elapsed)
-	if tostring((getProperty('forceSectionDetection'))) == 'nil' or getProperty('forceSectionDetection') == 'forceSectionDetection' then -- !!! FUCKING DIE YOU PIECE OF SHIT !!! --
-		putSection = mustHitSection
-	else
-		putSection = getProperty('forceSectionDetection')
-	end
-	if startedCountdown and not inGameOver then
-		local speedThing = triggerVelocity and (getProperty('camVelocity.mult') / getProperty('camGame.zoom')) or 1
-		if below07 then
-			if not getProperty('inCutscene') then
-				local function bound(value, min, max) return math.max(min, math.min(max, value)) end
-				local lerpVal = bound(elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate, 0, 1)
-				local function lerp(a, b, ratio) return a + ratio * (b - a) end
-				setProperty('camFollowPos.x', lerp(getProperty('camFollowPos.x'), getProperty('camFollow.x') + getProperty('targetOffset.x'), lerpVal))
-				setProperty('camFollowPos.y', lerp(getProperty('camFollowPos.y'), getProperty('camFollow.y') + getProperty('targetOffset.y'), lerpVal))
-			end
-		else
-			if getProperty('camVelocity.active') then
-				local otherShit = not getProperty('inCutscene') and (below07 and true or (not getProperty('paused') and not getProperty('freezeCamera')))
-				setProperty('camGame.followLerp', otherShit and (2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate) or 0)
+	updateDetectionVars()
+	if startedCountdown and not inGameOver and type(getPropertyFromClass('flixel.FlxG', 'camera.target.x')) == 'number' then
+		local speedThing = (triggerVelocity and getProperty('camVelocity.active')) and (getProperty('camVelocity.mult') / getProperty('camGame.zoom')) or 1
+		if not getProperty('inCutscene') then
+			local function bound(value, min, max) return math.max(min, math.min(max, value)) end
+			local lerpVal = bound(elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate, 0, 1)
+			local function lerp(a, b, ratio) return a + ratio * (b - a) end
+			if below07 then
+				setProperty('camFollowPos.x', lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal))
+				setProperty('camFollowPos.y', lerp(getCamPos(true).y, getCamPos().y + getCamOffset().y, lerpVal))
+			else
+				setCamPos(
+					lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal),
+					lerp(getCamPos(true).y, getCamPos().y + getCamOffset().y, lerpVal),
+					true
+				)
 			end
 		end
 		-- debugPrint(getProperty('camGame.followLerp'))
@@ -561,16 +597,16 @@ local function camIdleBop(onPercent)
 		if not charExists(getProperty(getProperty('curChar')[1])) then return end
 		local cur = {beatNums = getProperty(getProperty('curChar')[1] .. '.danceEveryNumBeats'), anim = getProperty(getProperty('curChar')[1] .. '.animation.name')}
 		local function addIdleSuffix(anim) return anim .. getProperty(getProperty('curChar')[1] .. '.idleSuffix') end
-		if not getProperty('isCameraOnForcedPos') and not getProperty('inCutscene') then
+		if --[[ not getProperty('isCameraOnForcedPos') and ]] not getProperty('inCutscene') then
 			if getProperty(getProperty('curChar')[1] .. '.danceIdle') then
 				if onPercent % cur.beatNums == 0 then -- after bop
 					if cur.anim == addIdleSuffix('danceLeft') then
-						cancelTimers()
+						cancelTriggers()
 						updateCameraInfo(true)
 						setCamOffset((camDisplaceOffset.x / 2) / getProperty('camGame.zoom'), (-camDisplaceOffset.y / 2) / getProperty('camGame.zoom'))
 						runTimer('cam after bop', (crochet / 1000) / 2)
 					elseif cur.anim == addIdleSuffix('danceRight') then
-						cancelTimers()
+						cancelTriggers()
 						updateCameraInfo(true)
 						setCamOffset((-camDisplaceOffset.x / 2) / getProperty('camGame.zoom'), (-camDisplaceOffset.y / 2) / getProperty('camGame.zoom'))
 						runTimer('cam after bop', (crochet / 1000) / 2)
@@ -579,7 +615,7 @@ local function camIdleBop(onPercent)
 			else
 				if cur.anim == addIdleSuffix('idle') then
 					if onPercent % cur.beatNums == 0 then
-						cancelTimers()
+						cancelTriggers()
 						updateCameraInfo(true)
 						setCamOffset(0, (camDisplaceOffset.y / 2) / getProperty('camGame.zoom'))
 						runTimer('cam after bop', (crochet / 1000) / 2)
@@ -594,7 +630,7 @@ function onCountdownTick(counter) camIdleBop(counter) end
 function onBeatHit() camIdleBop(curBeat) end
 
 function onTimerCompleted(tag, loops, loopsLeft)
-	if not getProperty('isCameraOnForcedPos') then
+	-- if not getProperty('isCameraOnForcedPos') then
 		if tag == 'cool cam return' then
 			triggerVelocity = false
 			updateCameraInfo(true)
@@ -603,7 +639,7 @@ function onTimerCompleted(tag, loops, loopsLeft)
 		if tag == 'cam after bop' then
 			updateCameraInfo(true)
 		end
-	end
+	-- end
 end
 
 function onEvent(name, value1, value2, eventTime)
@@ -620,7 +656,7 @@ function onEvent(name, value1, value2, eventTime)
 			setProperty('ifCamLocked.oppo.active', false)
 			setProperty('ifCamLocked.play.active', false)
 		else
-			setProperty('isCameraOnForcedPos', false)
+			-- setProperty('isCameraOnForcedPos', false)
 			setProperty('ifCamLocked.oppo.active', true)
 			setProperty('ifCamLocked.oppo.x', pos.x)
 			setProperty('ifCamLocked.oppo.y', pos.y)
