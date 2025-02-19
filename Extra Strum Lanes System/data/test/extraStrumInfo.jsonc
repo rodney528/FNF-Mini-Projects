@@ -1,4 +1,4 @@
-{ // note that comments aren't permitted in jsons so please remove these comments if you reuse this file
+{ // note that comments aren't permitted in json, so please remove these comments if you reuse this file
 	"info": [
 		{ // to make a gf strum lane
 			"tag": "gf",
