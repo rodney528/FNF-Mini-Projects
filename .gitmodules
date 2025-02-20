@@ -1,11 +1,11 @@
 # Codename
 [submodule "Noteskin System"]
 	path = Codename/Noteskin System
-	url = https://github.com/rodney528/CNE-Noteskin-System
+	url = https://github.com/rodney528/Codename-Noteskin-System
 
 [submodule "TimeBar Addon"]
 	path = Codename/TimeBar Addon
-	url = https://github.com/rodney528/CNE-TimeBar-Addon
+	url = https://github.com/rodney528/Codename-TimeBar-Addon
 
 # Psych
 [submodule "Base Game Hold Covers"]
