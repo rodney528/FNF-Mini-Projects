@@ -11,3 +11,4 @@
 [submodule "Base Game Hold Covers"]
 	path = Psych/Base Game Hold Covers
 	url = https://github.com/rodney528/Psych-Hold-Covers
+	branch = latest
