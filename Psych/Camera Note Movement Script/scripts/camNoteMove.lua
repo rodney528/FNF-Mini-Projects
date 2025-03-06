@@ -17,7 +17,7 @@ local below07 = nil
 local function setupVars()
 	-- These are options you can customize.
 	stupidVar('displacementOffset', {x = 30, y = 30}) -- X and Y displacement offset.
-	stupidVar('canSnapOnMiss', true) -- Do you want the camera to snap to the selected `camPointChars.play` character on miss?
+	stupidVar('canSnapOnMiss', true) -- Do you want the camera to snap to the selected `camPointChars.play` character on miss (when facing them)?
 	stupidVar('allowCamIdleBop', true) -- Remade the cool cam idle bop movement that Blantados did for his version!
 	stupidVar('camVelocity', { -- Change camera speed when hitting notes (reverts when none are being hit).
 		active = true,
@@ -203,18 +203,6 @@ end
 
 ---@param x number
 ---@param y number
----@param isPos boolean
-function adjustCamPos(x, y, isPos)
-	isPos = checkVarData(isPos, false, 'boolean')
-	setCamPos(
-		getCamPos(isPos).x + checkVarData(x, 0, 'number'),
-		getCamPos(isPos).y + checkVarData(y, 0, 'number'),
-		isPos
-	)
-end
-
----@param x number
----@param y number
 function setCamOffset(x, y)
 	if below07 then
 		setProperty('targetOffset.x', checkVarData(x, getCamOffset().x, 'number'))
@@ -253,7 +241,7 @@ local cameraDetection = mustHitSection
 local sectionDetection = cameraDetection
 local function callCamPoint2Func(character, stopCall)
 	if character ~= lastFocus and not checkVarData(stopCall, false, 'boolean') then
-		local setSection = gfSection and nil or sectionDetection
+		local setSection = gfSection and nil or cameraDetection
 		if below07 then
 			callOnLuas('camPointingTo', {character, setSection})
 		else
@@ -285,15 +273,6 @@ end
 ---@return boolean
 local function charExists(charName)
 	return type(getProperty(charName .. '.x')) == 'number'
-	-- return runHaxeCode([[
-	-- 	var charName:String = ']] .. charName .. [[';
-	-- 	return switch (charName) {
-	-- 		case 'gf': game.gf != null;
-	-- 		case 'dad': game.dad != null;
-	-- 		case 'boyfriend': game.boyfriend != null;
-	-- 		default: game.getLuaObject(charName, false) != null;
-	-- 	}
-	-- ]])
 end
 
 ---Double checks for it hide gf is enabled in the stage json.
@@ -304,7 +283,7 @@ local function gfCheck(charName)
 		if charExists('gf') then
 			return charName
 		else
-			return mustHitSection and 'boyfriend' or 'dad'
+			return cameraDetection and 'boyfriend' or 'dad'
 		end
 	else
 		return charName
@@ -329,9 +308,9 @@ function updateCameraInfo(stopCall, updatePos)
 	setCamOffset(0, 0)
 	stopCall = checkVarData(stopCall, false, 'boolean')
 	updatePos = checkVarData(updatePos, false, 'boolean')
-	if getProperty('ifCamLocked.' .. (sectionDetection and 'play' or 'oppo') .. '.active') and updatePos then
-		setLockedCamPos(mustHitSection)
-		callCamPoint2Func(sectionDetection and 'playerLock' or 'opponentLock', stopCall)
+	if getProperty('ifCamLocked.' .. (cameraDetection and 'play' or 'oppo') .. '.active') and updatePos then
+		setLockedCamPos(cameraDetection)
+		callCamPoint2Func(cameraDetection and 'playerLock' or 'opponentLock', stopCall)
 	else
 		if updatePos then
 			setToCharCamPosition(getProperty('curChar')[1], {getProperty('curChar')[2], getProperty('curChar')[3]}, true, stopCall)
@@ -372,7 +351,7 @@ function setToCharCamPosition(character, offset, setPos, stopCall)
 		camPos.y = getMidpointY(character) + (mainOffset == 'gf' and 0 or (mainOffset == 'dad' and -100 or -100))
 		camPos.x = doMathStupid(camPos.x, (mainOffset == 'bf' and '-' or '+'), checkVarData(camera.position[1], 0, 'number'))
 		camPos.y = camPos.y + checkVarData(camera.position[2], 0, 'number')
-		if checkVarData(stageOffset, 'none', 'string') == 'none' or (mustHitSection and getProperty('ifCamLocked.play.active') or getProperty('ifCamLocked.oppo.active')) then
+		if checkVarData(stageOffset, 'none', 'string') == 'none' or (cameraDetection and getProperty('ifCamLocked.play.active') or getProperty('ifCamLocked.oppo.active')) then
 		else -- Funny code magic man!
 			if stageOffset == 'boyfriend' or stageOffset == 'girlfriend' or stageOffset == 'opponent' then
 				camPos.x = camPos.x + checkVarData(camera.offset[1], 0, 'number')
@@ -415,7 +394,7 @@ function onCreate()
 	if not below07 then
 		runHaxeCode([[
 			function gfCheck(charName:String) {
-				if (charName == 'gf') return game.gf != null ? 'gf' : (mustHitSection ? 'boyfriend' : 'dad');
+				if (charName == 'gf') return game.gf != null ? 'gf' : (cameraDetection ? 'boyfriend' : 'dad');
 				else return charName;
 			}
 			function getObject(charName:String) {
@@ -566,21 +545,15 @@ end
 function onUpdatePost(elapsed)
 	updateDetectionVars()
 	if startedCountdown and not inGameOver and type(getPropertyFromClass('flixel.FlxG', 'camera.target.x')) == 'number' then
-		local speedThing = (triggerVelocity and getProperty('camVelocity.active')) and (getProperty('camVelocity.mult') / getProperty('camGame.zoom')) or 1
+		local speedThing = (triggerVelocity and getProperty('camVelocity.active')) and getProperty('camVelocity.mult') or 1
 		if not getProperty('inCutscene') then
-			local function bound(value, min, max) return math.max(min, math.min(max, value)) end
-			local lerpVal = bound(elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) * playbackRate, 0, 1)
+			local lerpVal = clamp((elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) / getProperty('camGame.zoom')) * playbackRate, 0, 1)
 			local function lerp(a, b, ratio) return a + ratio * (b - a) end
-			if below07 then
-				setProperty('camFollowPos.x', lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal))
-				setProperty('camFollowPos.y', lerp(getCamPos(true).y, getCamPos().y + getCamOffset().y, lerpVal))
-			else
-				setCamPos(
-					lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal),
-					lerp(getCamPos(true).y, getCamPos().y + getCamOffset().y, lerpVal),
-					true
-				)
-			end
+			setCamPos(
+				lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal),
+				lerp(getCamPos(true).y, getCamPos().y + getCamOffset().y, lerpVal),
+				true
+			)
 		end
 		-- debugPrint(getProperty('camGame.followLerp'))
 	end
