@@ -5,7 +5,8 @@ local internalSettings = { -- This is for smaller stuff in the script that don't
 		'Hey!',
 		'No Animation'
 	},
-	sustainDisplacement = true -- With this on the camera will slowly lose its displacement instead of just moving back at the end of a note.
+	sustainDisplacement = true, -- With this on the camera will slowly lose its displacement instead of just moving back at the end of a note.
+	cleanerMovement = true -- Makes the movement look cleaner and less jittery.
 }
 
 -- Cool compatibility bullshit! `nil` for auto set. If it doesn't set automatically feel free to manually set it.
