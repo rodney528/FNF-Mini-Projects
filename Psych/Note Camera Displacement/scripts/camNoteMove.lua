@@ -547,7 +547,13 @@ function onUpdatePost(elapsed)
 	if startedCountdown and not inGameOver and type(getPropertyFromClass('flixel.FlxG', 'camera.target.x')) == 'number' then
 		local speedThing = (triggerVelocity and getProperty('camVelocity.active')) and getProperty('camVelocity.mult') or 1
 		if not getProperty('inCutscene') then
-			local lerpVal = clamp((elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing) / getProperty('camGame.zoom')) * playbackRate, 0, 1)
+			local dumbMath = elapsed * 2.4 * (getProperty('cameraSpeed') * speedThing)
+			if getProperty('camGame.zoom') < 1 then
+				dumbMath = dumbMath / getProperty('camGame.zoom')
+			else
+				dumbMath = dumbMath * getProperty('camGame.zoom')
+			end
+			local lerpVal = clamp(dumbMath * playbackRate, 0, 1)
 			local function lerp(a, b, ratio) return a + ratio * (b - a) end
 			setCamPos(
 				lerp(getCamPos(true).x, getCamPos().x + getCamOffset().x, lerpVal),

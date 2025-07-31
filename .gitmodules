@@ -1,4 +1,8 @@
 # Codename
+[submodule "Codename Hold Covers"]
+	path = Codename/Hold Covers
+	url = https://github.com/rodney528/Codename-Hold-Covers
+
 [submodule "Noteskin System"]
 	path = Codename/Noteskin System
 	url = https://github.com/rodney528/Codename-Noteskin-System
@@ -8,11 +12,16 @@
 	url = https://github.com/rodney528/Codename-TimeBar-Addon
 
 # Psych
-[submodule "Base Game Hold Covers"]
-	path = Psych/Base Game Hold Covers
+[submodule "Psych Hold Covers"]
+	path = Psych/Hold Covers
 	url = https://github.com/rodney528/Psych-Hold-Covers
 	branch = latest
 
 [submodule "Stage System"]
 	path = Psych/Stage System
 	url = https://github.com/rodney528/Psych-Stage-System
+
+# VSlice
+[submodule "Note Camera Displacement"]
+	path = VSlice/Note Camera Displacement
+	url = https://github.com/rodney528/VSlice-Note-Camera-Displacement
