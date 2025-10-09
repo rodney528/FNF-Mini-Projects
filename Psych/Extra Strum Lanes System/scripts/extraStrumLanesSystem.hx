@@ -34,10 +34,11 @@ function setStrumGroupX(strumGroup:FlxTypedGroup<StrumNote>, ?x:Float = 0, ?cust
  * @param customWidth custom swag width
  * @param groupLength like the actually amount of strums in the group, none of the 3 bs
  */
-function setStrumX(strumNote:StrumNote, ?x:Float = 0, ?customWidth:Float = 0, ?groupLength:Int = 4) {
+function setStrumX(strumNote:StrumNote, ?x:Float, ?customWidth:Float, ?groupLength:Int) {
 	if (strumNote == null) return debugPrint('setStrumX: strumNote can\'t be null!', 0xff0000);
-	if (customWidth < 1) customWidth = Note.swagWidth;
+	if (customWidth < 1 || customWidth == null) customWidth = Note.swagWidth;
 	var length:Int = groupLength == null ? 4 : groupLength;
+	if (x == null) x = 0;
 	strumNote.x = x - (customWidth / 2);
 	strumNote.x += customWidth * strumNote.noteData;
 	strumNote.x -= (customWidth * ((length - 1) / 2));
@@ -64,11 +65,11 @@ var blankLaneInfo = function(?mustPress = null) return mustPress == null ? {
  * @param noteTypes acts like `attachmentVar` but for individual notetypes
  * @param inFront adds it in front of the base strum lanes
  */
-function generateStrumLane(tag:String, attachmentVar:String, ?noteTypes:Array<String> = [], ?inFront:Bool = false) {
+function generateStrumLane(tag:String, attachmentVar:String, ?noteTypes:Array<String>, ?inFront:Bool = false) {
 	if (StringTools.endsWith(tag.toLowerCase(), 'strums')) return debugPrint('generateStrumLane: Strum lane tag can\'t end with "Strums" because the script does that for you.', 0xff0000);
 	else if (strumLanes.exists(tag)) return debugPrint('generateStrumLane: Strum lane tag "' + tag + '" already exists.', 0xff0000);
 	else if (tag == 'opponent' || tag == 'player') return debugPrint('generateStrumLane: Strum lane tag can\'t be "' + tag + '", as it would be named as a base game strum lane.', 0xff0000);
-	if (attachmentVar == '') return debugPrint('generateStrumLane: Can\'t be blank, try "gfNote" instead.', 0xff0000);
+	if (StringTools.trim(attachmentVar) == '') return debugPrint('generateStrumLane: Can\'t be blank, try "gfNote" instead.', 0xff0000);
 	var strumGroup:FlxTypedGroup<StrumNote> = new FlxTypedGroup();
 	for (i in 0...4) { // fuck extra keys... not really
 		var strumNote:StrumNote = new StrumNote(0, ClientPrefs.data.downScroll ? (FlxG.height - 150) : 50, i, 0);
@@ -111,14 +112,15 @@ var iHateEverything = function() {
 	var extraStrumInfo = parseJson('data/' + Paths.formatToSongPath(PlayState.SONG.song) + '/extraStrumInfo');
 	if (extraStrumInfo == null) return;
 	else if (extraStrumInfo.info == null) return debugPrint('extraStrumInfo: \"info\" part of the json is null', 0xff0000);
-	var strumLane;
+	var lines = [];
 	for (info in extraStrumInfo.info) {
-		strumLane = generateStrumLane(info.tag, info.attachmentVar, info.noteTypes, info.inFront);
-		if (strumLane == null) return;
-		setStrumGroupX(strumLane.lane, FlxG.width / 2);
-		for (strumNote in strumLane.lane) strumNote.screenCenter(0x10);
+		var ugh = generateStrumLane(info.tag, info.attachmentVar, info.noteTypes, info.inFront);
+		if (ugh == null) continue;
+		lines.push(ugh);
+		setStrumGroupX(ugh.lane, FlxG.width / 2);
+		for (strumNote in ugh.lane) strumNote.screenCenter(0x10);
 	}
-	if (strumLane == null) return; // jic
+	if (lines.length < 1) return; // jic
 	for (daNote in unspawnNotes) {
 		if (daNote != null) {
 			var strumLane = getStrumLane(daNote);
@@ -126,7 +128,11 @@ var iHateEverything = function() {
 			else daNote.extraData.set('setStrumLane', strumLane);
 		}
 	}
-	game.callOnScripts('onStrumLaneCreation', [strumLane.tag]);
+	for (tag in strumLanes.keys()) {
+		var line = strumLanes.get(tag);
+		// debugPrint(tag + ' => ' + line);
+		game.callOnScripts('onStrumLaneCreation', [line.tag]);
+	}
 };
 
 function onCreatePost() {
@@ -186,14 +192,15 @@ function callNoteHit(daNote:Note, strumLane) {
 function getStrumLane(daNote:Note) {
 	if (daNote != null) {
 		for (curLane in strumLanes) {
-			var hasAttachment:Bool = daNote.extraData.exists(curLane.attachmentVar) && daNote.extraData.get(curLane.attachmentVar);
-			if (curLane.attachmentVar == 'gfNote') hasAttachment = daNote.gfNote;
+			var hasAttachment:Bool = curLane.attachmentVar == 'gfNote' ? daNote.gfNote : (daNote.extraData.exists(curLane.attachmentVar) ? daNote.extraData.get(curLane.attachmentVar) : false);
 			var noteTypeUsed:Bool = false;
 			for (noteType in curLane.noteTypes) {
-				if (noteType != null && noteType != '' && noteType != daNote.noteType) {
-					noteTypeUsed = false;
+				if (noteType == null || StringTools.trim(noteType) == '')
+					continue;
+				if (noteType == daNote.noteType) {
+					noteTypeUsed = true;
 					break;
-				} else noteTypeUsed = true;
+				}
 			}
 			if (hasAttachment || noteTypeUsed) return curLane;
 			return blankLaneInfo(daNote.mustPress);
@@ -205,14 +212,22 @@ function getStrumLane(daNote:Note) {
 function onUpdatePost(elapsed:Float) {
 	if (generatedMusic && !inCutscene && notes.length > 0 && startedCountdown) {
 		var fakeCrochet:Float = (60 / PlayState.SONG.bpm) * 1000;
-		notes.forEachAlive(function(daNote:Note) {
+		for (daNote in notes) {
+			if (!daNote.alive) continue;
 			var strumLane = getStrumLane(daNote);
+			/* debugPrint(switch (daNote.noteType) {
+				case null: 'Is Null';
+				case '': 'Is Blank';
+				default: '"'+daNote.noteType+'"';
+			}); */
 			var strumGroup:FlxTypedGroup<StrumNote> = strumLane.lane;
-			if (strumLane == null || strumGroup == null)
-				return daNote.extraData.set('setStrumLane', blankLaneInfo(daNote.mustPress));
+			if (strumLane == null || strumGroup == null) {
+				daNote.extraData.set('setStrumLane', blankLaneInfo(daNote.mustPress));
+				continue;
+			}
 			else daNote.extraData.set('setStrumLane', strumLane);
 			final setStrumLaneTag = daNote.extraData.exists('setStrumLane') ? daNote.extraData.get('setStrumLane').tag : '';
-			if (setStrumLaneTag == 'opponent' || setStrumLaneTag == 'player' || setStrumLaneTag == '') return;
+			if (setStrumLaneTag == 'opponent' || setStrumLaneTag == 'player' || StringTools.trim(setStrumLaneTag) == '') continue;
 			var strum:StrumNote = strumGroup.members[daNote.noteData];
 			daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 			daNote.ignoreNote = true;
@@ -220,6 +235,6 @@ function onUpdatePost(elapsed:Float) {
 			daNote.ignoreNote = false;
 			if (daNote.isSustainNote && strum.sustainReduce) daNote.clipToStrumNote(strum);
 			daNote.ignoreNote = true;
-		});
+		}
 	}
 }
