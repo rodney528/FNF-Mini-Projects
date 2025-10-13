@@ -11,6 +11,10 @@
 	path = Codename/TimeBar Addon
 	url = https://github.com/rodney528/Codename-TimeBar-Addon
 
+[submodule "Codename Turn Timer"]
+	path = Codename/Turn Timer
+	url = https://github.com/rodney528/Codename-Turn-Timer
+
 # Psych
 [submodule "Psych Hold Covers"]
 	path = Psych/Hold Covers
