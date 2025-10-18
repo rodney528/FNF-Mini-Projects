@@ -37,3 +37,7 @@
 [submodule "VSlice Note Camera Displacement"]
 	path = VSlice/Note Camera Displacement
 	url = https://github.com/rodney528/VSlice-Note-Camera-Displacement
+
+[submodule "VSlice of Life"]
+	path = VSlice/VSlice of Life
+	url = https://github.com/rodney528/VSlice-of-Life
