@@ -25,6 +25,10 @@
 	url = https://github.com/rodney528/Psych-Hold-Covers
 	branch = latest
 
+[submodule "Separate Speaker System"]
+	path = Psych/Separate Speaker System
+	url = https://github.com/rodney528/Psych-Separate-Speaker-System
+
 [submodule "Stage System"]
 	path = Psych/Stage System
 	url = https://github.com/rodney528/Psych-Stage-System
