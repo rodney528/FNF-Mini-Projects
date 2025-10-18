@@ -18,9 +18,9 @@ import tjson.TJSON as Json;
  * @param x the new x
  * @param customWidth custom swag width
  */
-function setStrumGroupX(strumGroup:FlxTypedGroup<StrumNote>, ?x:Float = 0, ?customWidth:Float = 0) {
+function setStrumGroupX(strumGroup:FlxTypedGroup<StrumNote>, ?x:Float, ?customWidth:Float):Void {
 	if (strumGroup == null) return debugPrint('setStrumGroupX: strumGroup can\'t be null!', 0xff0000);
-	if (customWidth < 1) customWidth = Note.swagWidth;
+	if (customWidth < 1 || customWidth == null) customWidth = Note.swagWidth;
 	for (strumNote in strumGroup) {
 		strumNote.x = x - (customWidth / 2);
 		strumNote.x += customWidth * strumNote.noteData;
@@ -34,7 +34,7 @@ function setStrumGroupX(strumGroup:FlxTypedGroup<StrumNote>, ?x:Float = 0, ?cust
  * @param customWidth custom swag width
  * @param groupLength like the actually amount of strums in the group, none of the 3 bs
  */
-function setStrumX(strumNote:StrumNote, ?x:Float, ?customWidth:Float, ?groupLength:Int) {
+function setStrumX(strumNote:StrumNote, ?x:Float, ?customWidth:Float, ?groupLength:Int):Void {
 	if (strumNote == null) return debugPrint('setStrumX: strumNote can\'t be null!', 0xff0000);
 	if (customWidth < 1 || customWidth == null) customWidth = Note.swagWidth;
 	var length:Int = groupLength == null ? 4 : groupLength;
@@ -46,17 +46,19 @@ function setStrumX(strumNote:StrumNote, ?x:Float, ?customWidth:Float, ?groupLeng
 
 // doesn't include base lanes obviously
 var strumLanes:StringMap<Dynamic> = new StringMap(); // DON'T TOUCH THIS OR IT COULD BREAK THE SCRIPT!
-var blankLaneInfo = function(?mustPress = null) return mustPress == null ? {
-	tag: '',
-	lane: null,
-	attachmentVar: '',
-	noteTypes: []
-} : {
-	tag: mustPress ? 'player' : 'opponent',
-	lane: mustPress ? game.playerStrums : game.opponentStrums,
-	attachmentVar: '',
-	noteTypes: []
-};
+function blankLaneInfo(?mustPress:Bool):Void {
+	return mustPress == null ? {
+		tag: '',
+		lane: null,
+		attachmentVar: '',
+		noteTypes: []
+	} : {
+		tag: mustPress ? 'player' : 'opponent',
+		lane: mustPress ? game.playerStrums : game.opponentStrums,
+		attachmentVar: '',
+		noteTypes: []
+	};
+}
 
 /**
  * creates the new strum lane, don't add "Strums" to the end of the tag name PLEASE
@@ -99,13 +101,13 @@ function parseJson(directory:String, ?printWarming:Bool = false, ?ignoreMods:Boo
 }
 
 // `createGlobalCallback` allows use in lua, `setOnHScript` allows use in hx and `makeForBoth` is well... for both.
-var makeForBoth = function(tag:String, value:Dynamic) { // using setOnLuas would crash, idk why
+function makeForBoth(tag:String, value:Dynamic):Void { // using setOnLuas would crash, idk why
 	createGlobalCallback(tag, value); // creates function for lua
 	game.setOnHScript(tag, value); // creates function for hscript
 }
 
 var ran:Bool = false;
-var iHateEverything = function() {
+function iHateEverything():Void {
 	if (ran) return; ran = true;
 	makeForBoth('setStrumGroupX', setStrumGroupX);
 	makeForBoth('setStrumX', setStrumX);
@@ -139,14 +141,24 @@ function onCreatePost() {
 	makeForBoth('setStrumGroupX', setStrumGroupX);
 	makeForBoth('setStrumX', setStrumX);
 	// iHateEverything();
+	for (daNote in unspawnNotes) {
+		if (!daNote.alive) continue;
+		var strumLane = getStrumLane(daNote);
+		var strumGroup:FlxTypedGroup<StrumNote> = strumLane.lane;
+		if (strumLane == null || strumGroup == null) {
+			daNote.extraData.set('setStrumLane', blankLaneInfo(daNote.mustPress));
+			continue;
+		} else daNote.extraData.set('setStrumLane', strumLane);
+	}
 }
 function onSongStart() iHateEverything();
 function onCountdownTick() iHateEverything();
 
-function callNoteHit(daNote:Note, strumLane) {
+function callNoteHit(daNote:Note, strumLane):Void {
 	final ogMustPress:Bool = daNote.mustPress;
 	daNote.mustPress = false;
-	var callScript = function(daNote:Note, ?isPre:Bool = false) {
+	function callScript(daNote:Note, ?isPre:Bool):Void {
+		if (isPre == null) isPre = false;
 		var funcNames:String = 'otherStrumHit' + (isPre ? 'Pre' : '');
 		daNote.mustPress = ogMustPress;
 		var result:Dynamic = game.callOnLuas(funcNames, [notes.members.indexOf(daNote), daNote.noteData, daNote.noteType, daNote.isSustainNote, strumLane.tag]);
@@ -189,8 +201,10 @@ function callNoteHit(daNote:Note, strumLane) {
 	if (!daNote.isSustainNote) game.invalidateNote(daNote);
 }
 
+var returnLane;
 function getStrumLane(daNote:Note) {
 	if (daNote != null) {
+		returnLane = null;
 		for (curLane in strumLanes) {
 			var hasAttachment:Bool = curLane.attachmentVar == 'gfNote' ? daNote.gfNote : (daNote.extraData.exists(curLane.attachmentVar) ? daNote.extraData.get(curLane.attachmentVar) : false);
 			var noteTypeUsed:Bool = false;
@@ -202,32 +216,25 @@ function getStrumLane(daNote:Note) {
 					break;
 				}
 			}
-			if (hasAttachment || noteTypeUsed) return curLane;
-			return blankLaneInfo(daNote.mustPress);
+			if (hasAttachment || noteTypeUsed) {
+				returnLane = curLane;
+				break;
+			}
 		}
+		return returnLane != null ? returnLane : blankLaneInfo(daNote.mustPress);
 	}
 	return blankLaneInfo();
 }
 
 function onUpdatePost(elapsed:Float) {
-	if (generatedMusic && !inCutscene && notes.length > 0 && startedCountdown) {
+	if (persistentDraw && generatedMusic && !inCutscene && notes.length > 0 && startedCountdown) {
 		var fakeCrochet:Float = (60 / PlayState.SONG.bpm) * 1000;
 		for (daNote in notes) {
 			if (!daNote.alive) continue;
-			var strumLane = getStrumLane(daNote);
-			/* debugPrint(switch (daNote.noteType) {
-				case null: 'Is Null';
-				case '': 'Is Blank';
-				default: '"'+daNote.noteType+'"';
-			}); */
-			var strumGroup:FlxTypedGroup<StrumNote> = strumLane.lane;
-			if (strumLane == null || strumGroup == null) {
-				daNote.extraData.set('setStrumLane', blankLaneInfo(daNote.mustPress));
-				continue;
-			}
-			else daNote.extraData.set('setStrumLane', strumLane);
 			final setStrumLaneTag = daNote.extraData.exists('setStrumLane') ? daNote.extraData.get('setStrumLane').tag : '';
 			if (setStrumLaneTag == 'opponent' || setStrumLaneTag == 'player' || StringTools.trim(setStrumLaneTag) == '') continue;
+			var strumLane = daNote.extraData.get('setStrumLane');
+			var strumGroup:FlxTypedGroup<StrumNote> = strumLane.lane;
 			var strum:StrumNote = strumGroup.members[daNote.noteData];
 			daNote.followStrumNote(strum, fakeCrochet, songSpeed / playbackRate);
 			daNote.ignoreNote = true;
