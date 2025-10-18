@@ -1,5 +1,5 @@
-import psychlua.LuaUtils;
 import haxe.ds.StringMap;
+import psychlua.LuaUtils;
 
 /*typedef PackingInfo = {
 	var name:String;
@@ -11,30 +11,29 @@ import haxe.ds.StringMap;
 var extraChars:StringMap<Dynamic> = new StringMap(); // DON'T TOUCH THIS OR IT COULD BREAK THE SCRIPT!
 
 // Character bops B)
-var onBop = function(onPercent:Int) {
+function onBop(onPercent:Int):Void {
 	for (curChar in extraChars)
 		if (curChar.self != null && onPercent % curChar.self.danceEveryNumBeats == 0 && curChar.self.animation.curAnim != null && !StringTools.startsWith(curChar.self.animation.name, 'sing'))
 			if (!curChar.self.stunned && startedCountdown && generatedMusic)
 				curChar.self.dance();
 }
-function onCountdownTick(tick:Countdown, counter:Int) {onBop(counter); return;}
-function onBeatHit() {onBop(curBeat); return;}
+function onCountdownTick(tick:Countdown, counter:Int) onBop(counter);
+function onBeatHit() onBop(curBeat);
 
-function onUpdatePost(elapsed:Float) {
+function onUpdatePost(elapsed:Float):Void
 	for (curChar in extraChars)
 		if (curChar.self != null && (!controls.NOTE_LEFT && !controls.NOTE_DOWN && !controls.NOTE_UP && !controls.NOTE_RIGHT) && startedCountdown && generatedMusic)
 			if (!curChar.self.stunned && curChar.self.holdTimer > Conductor.stepCrochet * 0.0011 * curChar.self.singDuration && curChar.self.animation.curAnim != null && StringTools.startsWith(curChar.self.animation.name, 'sing') && !StringTools.endsWith(curChar.self.animation.name, 'miss'))
 				curChar.self.dance();
-	return;
-}
 
-var extraNoteCall = function(setChar:Dynamic, daNote:Note, isPlayerNote:Bool, hasMissed:Bool, ?isPre:Bool = false) {
+function extraNoteCall(setChar:Dynamic, daNote:Note, isPlayerNote:Bool, hasMissed:Bool, ?isPre:Bool):Void {
+	if (isPre == null) isPre = false;
 	if (isPre && hasMissed) return;
-	var funcName:String = (hasMissed ? 'extraNoteMiss' : 'extraNoteHit') + isPre ? 'Pre' : '';
+	var funcName:String = (hasMissed ? 'extraNoteMiss' : 'extraNoteHit') + (isPre ? 'Pre' : '');
 	var result:Dynamic = game.callOnLuas(funcName, [notes.members.indexOf(daNote), daNote.noteData, daNote.noteType, daNote.isSustainNote, setChar.name, isPlayerNote]);
 	if (result != Function_Stop && result != Function_StopHScript && result != Function_StopAll) game.callOnHScript(funcName, [daNote, setChar, isPlayerNote]);
 }
-var allNoteTriggers = function(daNote:Note, hasMissed:Bool) {
+function allNoteTriggers(daNote:Note, hasMissed:Bool):Void {
 	for (curChar in extraChars) {
 		if (extraChars.exists(curChar.name) && curChar.self.extraData.exists('noteTypes') && curChar.self != null) {
 			for (noteTypes in curChar.self.extraData.get('noteTypes')) {
@@ -55,18 +54,17 @@ var allNoteTriggers = function(daNote:Note, hasMissed:Bool) {
 	}
 }
 // I combined them, cause yes.
-function goodNoteHit(daNote:Note) {allNoteTriggers(daNote, daNote.mustPress); return;}
-function opponentNoteHit(daNote:Note) {allNoteTriggers(daNote, daNote.mustPress); return;}
-function otherStrumHit(daNote:Note, strumLane) {allNoteTriggers(daNote, daNote.mustPress); return;}
-function noteMiss(daNote:Note) {allNoteTriggers(daNote, daNote.mustPress); return;}
-function opponentNoteMiss(daNote:Note) {allNoteTriggers(daNote, daNote.mustPress); return;} // jic
+function goodNoteHit(daNote:Note) allNoteTriggers(daNote, daNote.mustPress);
+function opponentNoteHit(daNote:Note) allNoteTriggers(daNote, daNote.mustPress);
+function otherStrumHit(daNote:Note, strumLane) allNoteTriggers(daNote, daNote.mustPress);
+function noteMiss(daNote:Note) allNoteTriggers(daNote, daNote.mustPress);
+function opponentNoteMiss(daNote:Note) allNoteTriggers(daNote, daNote.mustPress); // jic
 
 function onEventPushed(name:String, value1:String, value2:String) {
 	switch (name) {
 		case 'Change Extra Character':
 			precacheCharacter(value1, value2);
 	}
-	return;
 }
 
 function onEvent(name:String, value1:String, value2:String) {
@@ -97,14 +95,13 @@ function onEvent(name:String, value1:String, value2:String) {
 				char.specialAnim = true;
 			}
 	}
-	return;
 }
 
-var setupChar = function(tag:String, char:Character, noteTypes:Array<Dynamic>) {
+function setupChar(tag:String, char:Character, noteTypes:Array<Dynamic>):Void {
 	setVar(tag, char);
 	char.extraData.set('noteTypes', noteTypes);
 	game.setOnScripts(tag + 'Name', char.curCharacter);
-	extraChars.set(tag, {name: tag, self: char, /*cache: new StringMap(),*/ killSelf: function() { removeCharacter(tag); }});
+	extraChars.set(tag, {name: tag, self: char, /*cache: new StringMap(),*/ killSelf: () -> removeCharacter(tag)});
 }
 
 // Possible full on precache system in the future?
@@ -130,7 +127,7 @@ function makeCharacter(tag:String, character:String, ?charPos:Array<Float> = nul
 	char.x += char.positionArray[0];
 	char.y += char.positionArray[1];
 	char.dance();
-	
+
 	setupChar(tag, char, noteTypes);
 }
 
@@ -179,9 +176,9 @@ function importCharacter(tag:String, char:Character, ?noteTypes:Array<Dynamic> =
 }
 
 /**
- * If `type` is "set" then `input` should be `[[String, Bool], etc]`.    
- * If `type` is "add" then `input` should be `[String, Bool]`.    
- * If `type` is "remove" then `input` should be `String`.    
+ * If `type` is "set" then `input` should be `[[String, Bool], etc]`.
+ * If `type` is "add" then `input` should be `[String, Bool]`.
+ * If `type` is "remove" then `input` should be `String`.
  * If `type` is "replace" then `input` should be `[[String, Bool], [String, Bool]]`.
  * @param tag The `Character` objects tag.
  * @param input Notes that make the character sing. `[["the note type name", "true is player, false is opponent and null is for both"], etc]`
@@ -232,7 +229,7 @@ function shouldNotePlayAnim(noteType:String, ?haveAnim:Bool = null, ?mustPress:B
 }
 
 // `createGlobalCallback` allows use in lua, `setOnHScript` allows use in hx and `makeForBoth` is well... for both.
-var makeForBoth = function(tag:String, value:Dynamic) { // using setOnLuas would crash, idk why
+function makeForBoth(tag:String, value:Dynamic):Void { // using setOnLuas would crash, idk why
 	createGlobalCallback(tag, value); // creates function for lua
 	game.setOnHScript(tag, value); // creates function for hscript
 }
@@ -253,5 +250,4 @@ function onCreatePost() {
 	game.setOnHScript('importCharacter', importCharacter);
 	makeForBoth('setCharNoteTypes', setCharNoteTypes);
 	makeForBoth('shouldNotePlayAnim', shouldNotePlayAnim);
-	return;
 }
