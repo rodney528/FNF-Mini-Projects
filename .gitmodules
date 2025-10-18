@@ -3,6 +3,10 @@
 	path = Codename/Hold Covers
 	url = https://github.com/rodney528/Codename-Hold-Covers
 
+[submodule "Codename Note Camera Displacement"]
+	path = Codename/Note Camera Displacement
+	url = https://github.com/rodney528/Codename-Note-Camera-Displacement
+
 [submodule "Noteskin System"]
 	path = Codename/Noteskin System
 	url = https://github.com/rodney528/Codename-Noteskin-System
@@ -11,7 +15,7 @@
 	path = Codename/TimeBar Addon
 	url = https://github.com/rodney528/Codename-TimeBar-Addon
 
-[submodule "Codename Turn Timer"]
+[submodule "Turn Timer"]
 	path = Codename/Turn Timer
 	url = https://github.com/rodney528/Codename-Turn-Timer
 
@@ -26,6 +30,6 @@
 	url = https://github.com/rodney528/Psych-Stage-System
 
 # VSlice
-[submodule "Note Camera Displacement"]
+[submodule "VSlice Note Camera Displacement"]
 	path = VSlice/Note Camera Displacement
 	url = https://github.com/rodney528/VSlice-Note-Camera-Displacement
