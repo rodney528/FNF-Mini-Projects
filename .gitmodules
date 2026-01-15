@@ -1,4 +1,8 @@
 # Codename
+[submodule "Change Character Event"]
+	path = Codename/Change Character Event
+	url = https://github.com/rodney528/Codename-Change-Character-Event
+
 [submodule "Codename Hold Covers"]
 	path = Codename/Hold Covers
 	url = https://github.com/rodney528/Codename-Hold-Covers
