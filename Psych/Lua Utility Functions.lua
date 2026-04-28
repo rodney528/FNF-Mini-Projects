@@ -84,7 +84,7 @@ end
 ---@param isDebug? boolean If true, this will only print when in charting mode.
 local function trace(value, isDebug)
 	if nilCheck(isDebug, false) then
-		if isChartingMode() then
+		if isChartingMode() or luaDebugMode then
 			debugPrint(f(value))
 		end
 	else -- wrapped in "f" jic you pop a single table in here
