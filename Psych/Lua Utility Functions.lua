@@ -45,6 +45,7 @@ local function f(...)
 			setVar('f_varHolder', value)
 		end
 
+		---@todo Find a better way to handle hscript imports?
 		if not isNew() then addHaxeLibrary('Std') end
 		runHaxeCode((isNew() and 'import Std;' or '') .. [[ setVar('f_varHolder', Std.string(getVar('f_varHolder'))); ]])
 		return getProperty('f_varHolder')
@@ -107,6 +108,8 @@ local function parseJson(path, printWarning)
 		return nil
 	end
 
+	---@todo Find a better way to handle hscript imports?
+	-- is JsonParser because when tested in 0.6.3, Json.parse would be null. Not that class btw, just the parse function... ik its really wierd.
 	if not isNew() then addHaxeLibrary('JsonParser', 'haxe.format') end
 	runHaxeCode(f(
 		isNew() and 'import haxe.format.JsonParser;' or '',
@@ -187,4 +190,23 @@ end
 local function doesPropertyExist(variable)
 	local lol = getProperty(variable) ---@type any
 	return not (type(lol) == 'nil' or lol == variable)
+end
+
+
+function onCreate()
+	-- easy and simple below v0.6 warning message :3
+	trace(f('Is New: ', isNew(true), ', Is Legacy: ', isLegacy(true), ', Is Beta: ', isBeta(true)), true)
+	if version < '0.6' then
+		trace(f(
+			'Hey this script only works on Psych v0.6 and above!\n',
+			'Psych v', version, ' isn\'t compatible with the script whatsoever!'
+		))
+		return close(true)
+	elseif not (isNew(true) or isLegacy(true) or isBeta(true)) then
+		trace(f(
+			'Hey this script might not work properly on Psych v', version, '!\n',
+			'If you wish for the script to work appropriately please use versions...\n',
+			'v0.6.3, v0.7.3 or v1.0.4! If the script works perfectly fine, then just ignore this message.'
+		), true)
+	end
 end
