@@ -177,7 +177,7 @@ function _callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScript
 	else
 		excludedValues = nilCheck(excludedValues, {})
 		if nilCheck(luaOnly, false) then
-			return callOnLuas(func, arguments, ignoreSelf, excludedScripts, excludedValues)
+			return callOnLuas(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues)
 		else
 			return callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues)
 		end
