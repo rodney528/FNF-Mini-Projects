@@ -45,7 +45,7 @@ local function f(...)
 			setVar('f_varHolder', value)
 		end
 
-		---@todo Find a better way to handle hscript imports?
+		-- can't use "prepImports" here for the same reason as "_setVar"
 		if not isNew() then addHaxeLibrary('Std') end
 		runHaxeCode((isNew() and 'import Std;' or '') .. [[ setVar('f_varHolder', Std.string(getVar('f_varHolder'))); ]])
 		return getProperty('f_varHolder')
@@ -71,6 +71,34 @@ local function textSplit(text, delimiter)
 		splitTxt[index] = stringTrim(value)
 	end
 	return splitTxt
+end
+
+---Useful for prepping imports for runHaxeCode usage.
+---
+---## example:
+---```lua
+---runHaxeCode(f(
+---	prepImports({'flixel.addons.display.FlxBackdrop'}),
+---	[[ var ahh:FlxBackdrop = new FlxBackdrop(Paths.image('characters/BOYFRIEND')); ]]
+---))
+---```
+---@param imports string[] The imports to prep.
+---@return string
+local function prepImports(imports)
+	local final = ''
+	for index, path in pairs(imports) do
+		if isBeta() then
+			runHaxeCode(f([[
+				var preppedImports:Array<String> = ']], path, [['.split('.');
+				setVar('prepImports_varHolder', [preppedImports.pop(), preppedImports.join('.')]);
+			]]))
+			local finalzedImport = getProperty('prepImports_varHolder') ---@type string[][]
+			addHaxeLibrary(finalzedImport[1], finalzedImport[2])
+		else
+			final = f(final, 'import ', path, ';\n')
+		end
+	end
+	return final
 end
 
 ---Checks if the charting mode is active.
@@ -108,11 +136,8 @@ local function parseJson(path, printWarning)
 		return nil
 	end
 
-	---@todo Find a better way to handle hscript imports?
-	-- is JsonParser because when tested in 0.6.3, Json.parse would be null. Not that class btw, just the parse function... ik its really wierd.
-	if not isNew() then addHaxeLibrary('JsonParser', 'haxe.format') end
 	runHaxeCode(f(
-		isNew() and 'import haxe.format.JsonParser;' or '',
+		prepImports({'haxe.format.JsonParser'}),
 		[[ var fileContents:String = ']], fileContents, [[';
 		var jsonData = new JsonParser(fileContents).doParse();
 		setVar('jsonData_varHolder', jsonData); ]]
@@ -124,7 +149,7 @@ end
 ---Used to make setVar usage compatible with older versions.
 ---@param variable string The variable name.
 ---@param value any What the variable stores.
-function _setVar(variable, value)
+local function _setVar(variable, value)
 	if isBeta() then
 		runHaxeCode(f('setVar("',  variable,  '", null);'))
 		setProperty(variable, value)
@@ -139,7 +164,7 @@ end
 ---@param ignoreSelf? boolean Wether to not set the variable on itself.
 ---@param exclusions? string[] Specific scripts to not set the variable for.
 ---@param luaOnly? boolean If true, it only calls setOnLuas when on newer versions.
-function _setOnScripts(variable, value, ignoreSelf, exclusions, luaOnly)
+local function _setOnScripts(variable, value, ignoreSelf, exclusions, luaOnly)
 	if isBeta() then
 		_setVar('setOnLuas_varHolder', {variable, value})
 		runHaxeCode([[
@@ -167,7 +192,7 @@ end
 ---@param excludedValues? any[] Values to prevent from being returned.
 ---@param luaOnly? boolean If true, it only calls callOnLuas when on newer versions.
 ---@return any returnValue Note: Always returns true on 0.7.3 for some reason? Might add a workaround, but I'm unsure atm.
-function _callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues, luaOnly)
+local function _callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues, luaOnly)
 	arguments = nilCheck(arguments, {})
 	ignoreStops = nilCheck(ignoreStops, false)
 	ignoreSelf = nilCheck(ignoreSelf, true)
