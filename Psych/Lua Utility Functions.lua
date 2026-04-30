@@ -11,32 +11,23 @@
 
 ----- [[ Utility Functions ]] -----
 
----Check's if the input is nil.
----@generic input
----@param variable any The data to check.
----@param ifNil input What should be returned if nil.
----@return input # The checked data.
-local function nilCheck(variable, ifNil)
-	return (type(variable) == 'nil' or variable == nil) and ifNil or variable
-end
-
 ---Check's if your running on v1 instances of Psych Engine.
 ---@param exact? boolean If true, it will look for v1.0.4 specifically.
 ---@return boolean # The results of the check.
 local function isNew(exact)
-	return nilCheck(exact, false) and version == '1.0.4' or version >= '1.0'
+	return (exact or false) and version == '1.0.4' or version >= '1.0'
 end
 ---Check's if your running on v0.7 instances of Psych Engine.
 ---@param exact? boolean If true, it will look for v0.7.3 specifically.
 ---@return boolean # The results of the check.
 local function isLegacy(exact)
-	return nilCheck(exact, false) and version == '0.7.3' or (version <= '0.7.3' and version >= '0.7')
+	return (exact or false) and version == '0.7.3' or (version <= '0.7.3' and version >= '0.7')
 end
 ---Check's if your running on v0.6 instances of Psych Engine.
 ---@param exact? boolean If true, it will look for v0.6.3 specifically.
 ---@return boolean # The results of the check.
 local function isBeta(exact)
-	return nilCheck(exact, false) and version == '0.6.3' or (version <= '0.6.3' and version >= '0.6')
+	return (exact or false) and version == '0.6.3' or (version <= '0.6.3' and version >= '0.6')
 end
 -- it would be funny to add smth like "isOutdated" but nah, lol
 
@@ -65,7 +56,7 @@ local function f(...)
 	for index, value in pairs({...}) do
 		local part = value
 		part = type(part) == 'table' and stringifyTable(part) or tostring(part)
-		part = nilCheck(part, 'nil')
+		part = part or 'nil'
 		final = final .. part
 	end
 	return final
@@ -126,7 +117,7 @@ local function trace(value, isDebug)
 		-- wrapped in "f" jic you pop a single table in here
 		debugPrint(f(value))
 	end
-	if nilCheck(isDebug, false) then
+	if isDebug or false then
 		if isChartingMode() or luaDebugMode then
 			code()
 		end
@@ -186,9 +177,9 @@ local function _setOnScripts(variable, value, ignoreSelf, exclusions, luaOnly)
 			varHolder.resize(0);
 		]])
 	else
-		ignoreSelf = nilCheck(ignoreSelf, false)
-		exclusions = nilCheck(exclusions, {})
-		if nilCheck(luaOnly, false) then
+		ignoreSelf = ignoreSelf or false
+		exclusions = exclusions or {}
+		if luaOnly or false then
 			setOnLuas(variable, value, ignoreSelf, exclusions)
 		else
 			setOnScripts(variable, value, ignoreSelf, exclusions)
@@ -207,15 +198,15 @@ end
 ---@param luaOnly? boolean If true, it only calls callOnLuas when on newer versions.
 ---@return any # Note: Always returns true on v0.7 for some reason? Might add a workaround, but I'm unsure atm.
 local function _callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues, luaOnly)
-	arguments = nilCheck(arguments, {})
-	ignoreStops = nilCheck(ignoreStops, false)
-	ignoreSelf = nilCheck(ignoreSelf, true)
-	excludedScripts = nilCheck(excludedScripts, {})
+	arguments = arguments or {}
+	ignoreStops = ignoreStops or false
+	ignoreSelf = ignoreSelf or true
+	excludedScripts = excludedScripts or {}
 	if isBeta() then
 		return callOnLuas(func, arguments, ignoreSelf, excludedScripts)
 	else
-		excludedValues = nilCheck(excludedValues, {})
-		if nilCheck(luaOnly, false) then
+		excludedValues = excludedValues or {}
+		if luaOnly or false then
 			return callOnLuas(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues)
 		else
 			return callOnScripts(func, arguments, ignoreStops, ignoreSelf, excludedScripts, excludedValues)
