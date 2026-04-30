@@ -81,10 +81,10 @@ local function textSplit(text, delimiter, renderer)
 	local splitTxt = stringSplit(text, delimiter) ---@type string[]
 	local finalArray = {} ---@type input[]
 	for index, value in pairs(splitTxt) do
-		if nilCheck(renderer, 'buh') == 'buh' then
-			table.insert(finalArray, stringTrim(value))
-		else
+		if type(renderer) == 'function' then
 			table.insert(finalArray, renderer(stringTrim(value)))
+		else
+			table.insert(finalArray, stringTrim(value))
 		end
 	end
 	return finalArray
